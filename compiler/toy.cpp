@@ -62,6 +62,7 @@ static int gettok() {
     
     int ThisChar = LastChar;
     LastChar = getchar();
+
     return ThisChar;
 }
 
@@ -109,7 +110,7 @@ class CallExprAST : public ExprAST {
 };
 
 class PrototypeAST {
-    std::string NAme;
+    std::string Name;
     std::vector<std::string> Args;
 
     public:
@@ -141,7 +142,7 @@ static int GetTokPrecedence() {
     if (!isascii(CurTok))
         return -1;
     
-    int TokPrec = BinOpPrecedence[CurTok];
+    int TokPrec = BinopPrecedence[CurTok];
     if (TokPrec <= 0)
         return -1;
     return TokPrec;
@@ -222,7 +223,7 @@ static std::unique_ptr<ExprAST> ParsePrimary() {
 static std::unique_ptr<ExprAST> ParseBinOpRHS(int ExprPrec,
                                                 std::unique_ptr<ExprAST> LHS) {
     while (true) {
-        int TokPrec = GetTokenPrecedence();
+        int TokPrec = GetTokPrecedence();
 
         if (TokPrec < ExprPrec) {
             return LHS;
@@ -265,14 +266,25 @@ static std::unique_ptr<PrototypeAST> ParsePrototype() {
         return LogErrorP("Expected '(' in prototype");
 
     std::vector<std::string> ArgNames;
-    while (getNextToken() == tok_identifer)
+    getNextToken();
+    while (CurTok == tok_identifier) {
         ArgNames.push_back(IdentifierStr);
+
+        getNextToken();
+        if (CurTok != ',' && CurTok != ')') {
+            fprintf(stderr, "CurTok: %c\n", CurTok);
+            return LogErrorP("Expected ',' yn arguments");
+        }
+
+        getNextToken();
+    }
+
     if (CurTok != ')')
         return LogErrorP("Expected ')' in prototype");
 
     getNextToken();
 
-    return std::make_unique(PrototypeAST>(FnName, std::move(ArgNames));
+    return std::make_unique<PrototypeAST>(FnName, std::move(ArgNames));
 }
 
 static std::unique_ptr<FunctionAST> ParseDefinition() {
@@ -289,7 +301,7 @@ static std::unique_ptr<FunctionAST> ParseDefinition() {
 static std::unique_ptr<FunctionAST> ParseTopLevelExpr() {
     if (auto E = ParseExpression()) {
         auto Proto = std::make_unique<PrototypeAST>("__anon_expr",
-                                                    std::vector<std::string>>());
+                                                    std::vector<std::string>());
         return std::make_unique<FunctionAST>(std::move(Proto), std::move(E));
     }
     return nullptr;
@@ -351,8 +363,9 @@ int main() {
     BinopPrecedence['+'] = 20;
     BinopPrecedence['-'] = 20;
     BinopPrecedence['*'] = 40;
+    BinopPrecedence['/'] = 40;
 
-    fprintf(stderr,r "ready> ");
+    fprintf(stderr, "ready> ");
     getNextToken();
 
     MainLoop();
