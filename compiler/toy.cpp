@@ -135,9 +135,9 @@ class CallExprAST : public ExprAST {
 
 class PrototypeAST {
     std::string Name;
-    std::vector<std::string> Args;
 
     public:
+        std::vector<std::string> Args;
         PrototypeAST(const std::string &Name, std::vector<std::string> Args)
             : Name(Name), Args(std::move(Args)) {}
 
@@ -331,7 +331,7 @@ static std::unique_ptr<FunctionAST> ParseDefinition() {
 
 static std::unique_ptr<FunctionAST> ParseTopLevelExpr() {
     if (auto E = ParseExpression()) {
-        auto Proto = std::make_unique<PrototypeAST>("__anon_expr",
+        auto Proto = std::make_unique<PrototypeAST>("",
                                                     std::vector<std::string>());
         return std::make_unique<FunctionAST>(std::move(Proto), std::move(E));
     }
@@ -430,6 +430,13 @@ Function *FunctionAST::codegen() {
     Builder->SetInsertPoint(BB);
 
     NamedValues.clear();
+
+    unsigned Idx = 0;
+    for (auto ProtoBegin = Proto->Args.begin(), ProtoEnd = Proto->Args.end();
+        ProtoBegin != ProtoEnd; ++ProtoBegin) {
+        TheFunction->getArg(Idx)->setName(*ProtoBegin);
+    }
+
     for (auto &Arg : TheFunction->args())
         NamedValues[std::string(Arg.getName())] = &Arg;
     
@@ -457,7 +464,7 @@ static void InitializeModule() {
 static void HandleDefinition() {
     if (auto FnAST = ParseDefinition()) {
         if (auto *FnIR = FnAST->codegen()) {
-            fprintf(stderr, "Read function definition:");
+            fprintf(stderr, "Read function definition:\n");
             FnIR->print(errs());
             fprintf(stderr, "\n");
         }
@@ -469,7 +476,7 @@ static void HandleDefinition() {
 static void HandleExtern() {
     if (auto ProtoAST = ParseExtern()) {
         if (auto *FnIR = ProtoAST->codegen()) {
-            fprintf(stderr, "Read extern: ");
+            fprintf(stderr, "Read extern:\n");
             FnIR->print(errs());
             fprintf(stderr, "\n");
         }
@@ -481,7 +488,7 @@ static void HandleExtern() {
 static void HandleTopLevelExpression() {
     if (auto FnAST = ParseTopLevelExpr()) {
         if (auto *FnIR = FnAST->codegen()) {
-            fprintf(stderr, "Read top-level expression:");
+            fprintf(stderr, "Read top-level expression:\n");
             FnIR->print(errs());
             fprintf(stderr, "\n");
 
@@ -522,6 +529,8 @@ int main() {
 
     fprintf(stderr, "ready> ");
     getNextToken();
+
+    InitializeModule();
 
     MainLoop();
 
