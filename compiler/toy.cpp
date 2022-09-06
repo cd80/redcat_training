@@ -134,7 +134,10 @@ class FunctionAST {
 
 /* Parser */
 static int CurTok;
-static int getNextToken() { return CurTok = gettok(); }
+static int getNextToken() { 
+    CurTok = gettok();
+    return CurTok;
+}
 
 static std::map<char, int> BinopPrecedence;
 
@@ -271,10 +274,11 @@ static std::unique_ptr<PrototypeAST> ParsePrototype() {
         ArgNames.push_back(IdentifierStr);
 
         getNextToken();
-        if (CurTok != ',' && CurTok != ')') {
-            fprintf(stderr, "CurTok: %c\n", CurTok);
-            return LogErrorP("Expected ',' yn arguments");
-        }
+        if (CurTok != ',' && CurTok != ')')
+            return LogErrorP("Expected ',' between arguments");
+
+        if (CurTok == ')')
+            break;
 
         getNextToken();
     }
